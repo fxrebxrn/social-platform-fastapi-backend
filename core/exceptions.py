@@ -57,3 +57,7 @@ class AlreadyUnfollowingError(AppError):
 class NotFoundError(AppError):
     status_code = 404
     detail = "Not found"
+
+class AttachmentNotFoundError(AppError):
+    status_code = 404
+    detail = "Attachment not found"

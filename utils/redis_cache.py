@@ -35,4 +35,12 @@ async def invalidate_user_cache(user_id: int):
     await redis_delete_by_prefix(f"user:{user_id}:feed")
 
 async def invalidate_post_cache(post_id: int):
-    await redis_delete_by_prefix(f"post:{post_id}:likes")
+    await redis_delete(f"post:{post_id}:full")
+    await redis_delete(f"post:{post_id}:likes")
+
+async def redis_delete_many(keys: list[str]):
+    await redis_client.delete(*keys)
+
+async def invalidate_notify_cache(user_id: int):
+    await redis_delete(f"user:{user_id}:notifications:all")
+    await redis_delete(f"user:{user_id}:notifications:unread-count")
