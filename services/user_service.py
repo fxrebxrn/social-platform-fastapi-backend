@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from services.base_repository import BaseRepository
-from services.user_repository import UserRepository
+from services.repositories.base_repository import BaseRepository
+from services.repositories.user_repository import UserRepository
 from services.attachment_service import AttachmentService
 from models import User, Notification, Follow
 from core.exceptions import SelfFollowError, AlreadyFollowingError, UserNotFoundError, PermissionDeniedError, AlreadyUnfollowingError
@@ -8,7 +8,7 @@ from utils.redis_cache import invalidate_notify_cache, invalidate_follow_cache
 from fastapi import HTTPException
 from utils.redis_cache import redis_get, redis_set, redis_delete
 from schemas.user_schemas import UserShort, UserUpdate
-from services.post_repository import PostRepository
+from services.repositories.post_repository import PostRepository
 from core.security import ALLOWED_ROLES
 
 class UserService:

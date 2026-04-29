@@ -10,7 +10,7 @@ from config.settings import settings
 import logging
 from core.exceptions import PermissionDeniedError, InvalidTokenError, ExpiredTokenError
 from typing import Annotated
-from services.user_repository import UserRepository
+from services.repositories.user_repository import UserRepository
 
 ALLOWED_ROLES = ["user", "admin", "moderator", "helper"]
 

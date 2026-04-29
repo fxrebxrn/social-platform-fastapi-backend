@@ -27,26 +27,43 @@ async def redis_delete_by_prefix(prefix: str):
         if cursor == 0:
             break
 
-async def invalidate_user_cache(user_id: int):
-    await redis_delete(f"user:{user_id}:followers")
-    await redis_delete(f"user:{user_id}:following")
-    await redis_delete(f"user:{user_id}:profile")
-    await redis_delete(f"user:{user_id}:posts")
-    await redis_delete_by_prefix(f"user:{user_id}:feed")
-
-async def invalidate_post_cache(post_id: int):
-    await redis_delete(f"post:{post_id}:full")
-    await redis_delete(f"post:{post_id}:likes")
-
 async def redis_delete_many(keys: list[str]):
     await redis_client.delete(*keys)
 
 async def invalidate_notify_cache(user_id: int):
-    await redis_delete(f"user:{user_id}:notifications:all")
-    await redis_delete(f"user:{user_id}:notifications:unread-count")
+    keys = [
+        f"user:{user_id}:notifications:all",
+        f"user:{user_id}:notifications:unread-count"
+    ]
+    await redis_delete_many(keys)
 
 async def invalidate_follow_cache(user_id: int, current_user):
-    await redis_delete(f"user:{user_id}:followers")
-    await redis_delete(f"user:{current_user.id}:following")
-    await redis_delete(f"user:{user_id}:profile")
-    await redis_delete(f"user:{current_user.id}:profile")
+    keys = [
+        f"user:{user_id}:followers",
+        f"user:{current_user.id}:following",
+        f"user:{user_id}:profile",
+        f"user:{current_user.id}:profile"
+    ]
+    await redis_delete_many(keys)
+
+async def invalidate_user_cache(user_id: int):
+    keys = [
+        f"user:{user_id}:followers",
+        f"user:{user_id}:following",
+        f"user:{user_id}:profile",
+        f"user:{user_id}:posts"
+    ]
+    await redis_delete_many(keys)
+    await redis_delete_by_prefix(f"user:{user_id}:feed")
+
+async def invalidate_post_cache(post_id: int):
+    keys = [
+        f"post:{post_id}:full",
+        f"post:{post_id}:likes"
+    ]
+    await redis_delete_many(keys)
+
+async def invalidate_chat_cache(chat_id: int, current_user_id: int, partner_id: int):
+    await redis_delete_by_prefix(f"chat:{chat_id}")
+    await redis_delete_by_prefix(f"user:{current_user_id}:all-chats")
+    await redis_delete_by_prefix(f"user:{partner_id}:all-chats")

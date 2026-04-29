@@ -1,16 +1,15 @@
 from models import User, Post, Comment, Notification, Like
 from sqlalchemy.ext.asyncio import AsyncSession
-from utils.query_helpers import get_comment_by_id_or_404, get_user_by_id_or_404
 from utils.comment_tree import build_comment_tree
 from utils.redis_cache import redis_get, redis_set, redis_delete, redis_delete_many, invalidate_notify_cache
-from core.exceptions import PostNotFoundError, PermissionDeniedError
+from core.exceptions import PostNotFoundError, PermissionDeniedError, CommentNotFoundError
 from schemas.post_schemas import PostData, UserShort, CommentOut, PostCreate, CommentCreate, PostWithUser, PostUpdate
-from services.post_repository import PostRepository
+from services.repositories.post_repository import PostRepository
 from utils.media import delete_media_file
 from fastapi import UploadFile, HTTPException
 from services.attachment_service import AttachmentService
 from utils.permissions import ensure_can_modify_post as check_can_modify_post
-from services.base_repository import BaseRepository
+from services.repositories.base_repository import BaseRepository
 from services.user_service import UserService
 
 class PostService:
@@ -36,6 +35,12 @@ class PostService:
     async def get_post_comments_tree(self, post_id: int):
         comments = await self.repo.get_comments_by_post_id(post_id)
         return build_comment_tree(comments)
+    
+    async def get_comment_by_id_or_raise(self, comment_id: int):
+        comment = await self.repo.get_comment_by_id(comment_id)
+        if not comment:
+            raise CommentNotFoundError()
+        return comment
 
     async def get_full_post_data(self, post_id: int, current_user_id: int):
         cache_key = f"post:{post_id}:full"
@@ -117,7 +122,7 @@ class PostService:
             raise HTTPException(status_code=400, detail="Invalid parent comment ID")
 
         if comment.parent_id is not None:
-            parent_comment = await get_comment_by_id_or_404(self.db, comment.parent_id)
+            parent_comment = await self.get_comment_by_id_or_raise(comment.parent_id)
             if parent_comment.post_id != post_id:
                 raise HTTPException(status_code=400, detail="Parent comment does not belong to the post")
             
@@ -363,7 +368,7 @@ class PostService:
         }
     
     async def delete_comment(self, comment_id: int, current_user: User):
-        comment = await get_comment_by_id_or_404(self.db, comment_id)
+        comment = await self.get_comment_by_id_or_raise(comment_id)
 
         if comment.user_id != current_user.id and current_user.role not in ["admin", "moderator"]:
             raise PermissionDeniedError()

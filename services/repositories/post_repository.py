@@ -54,3 +54,7 @@ class PostRepository:
     async def get_count_posts_by_user(self, user_id):
         stmt = select(func.count()).select_from(Post).where(Post.user_id == user_id)
         return await get_scalar_result(self.db, stmt)
+    
+    async def get_comment_by_id(self, comment_id: int):
+        stmt = select(Comment).where(Comment.id == comment_id)
+        return await fetch_first_by_stmt(self.db, stmt)

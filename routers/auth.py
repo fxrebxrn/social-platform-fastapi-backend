@@ -11,7 +11,7 @@ from typing import Annotated
 from schemas.user_schemas import MessageWithUser
 from schemas.util_schemas import TokenOutResponse, RefreshTokenOutResponse
 from core.exceptions import InvalidTokenError
-from services.user_repository import UserRepository
+from services.repositories.user_repository import UserRepository
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 

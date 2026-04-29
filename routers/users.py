@@ -1,21 +1,11 @@
-from fastapi import HTTPException, APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File
 from typing import Annotated
 from schemas.user_schemas import UserUpdate, UserMyProfileResponse, UserProfileResponse, UserShort, UserProfileResponse, AvatarResponse, MessageWithUser
-from models import User, Follow, Notification, Post
+from models import User
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 from core.database import get_db
-from utils.serializers import users_to_dicts, user_to_dict
-from utils.query_helpers import fetch_all_by_stmt, get_scalar_result
-from core.security import get_current_user, get_current_admin, ALLOWED_ROLES
-from utils.redis_cache import redis_get, redis_set, invalidate_user_cache, redis_delete
+from core.security import get_current_user, get_current_admin
 from schemas.util_schemas import MessageResponse
-import os
-import uuid
-from PIL import Image, UnidentifiedImageError
-from io import BytesIO
-from core.exceptions import PermissionDeniedError, UserNotFoundError, SelfFollowError, AlreadyFollowingError, AlreadyUnfollowingError
-from utils.media import delete_media_file
 from services.user_service import UserService
 from services.attachment_service import AttachmentService
 
