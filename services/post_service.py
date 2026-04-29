@@ -1,6 +1,6 @@
 from models import User, Post, Comment, Notification, Like
 from sqlalchemy.ext.asyncio import AsyncSession
-from utils.query_helpers import get_like_by_user_and_post, get_comment_by_id_or_404, get_user_by_id_or_404
+from utils.query_helpers import get_comment_by_id_or_404, get_user_by_id_or_404
 from utils.comment_tree import build_comment_tree
 from utils.redis_cache import redis_get, redis_set, redis_delete, redis_delete_many, invalidate_notify_cache
 from core.exceptions import PostNotFoundError, PermissionDeniedError
@@ -11,6 +11,7 @@ from fastapi import UploadFile, HTTPException
 from services.attachment_service import AttachmentService
 from utils.permissions import ensure_can_modify_post as check_can_modify_post
 from services.base_repository import BaseRepository
+from services.user_service import UserService
 
 class PostService:
     def __init__(self, db: AsyncSession):
@@ -18,6 +19,7 @@ class PostService:
         self.repo = PostRepository(db)
         self.att = AttachmentService(db)
         self.base_repo = BaseRepository(db)
+        self.user = UserService(db)
 
     async def get_post_by_id_or_raise(self, post_id: int):
         post = await self.repo.get_by_id(post_id)
@@ -57,7 +59,7 @@ class PostService:
 
         return {
             **cached, 
-            "is_liked": bool(await get_like_by_user_and_post(self.db, current_user_id, post_id))
+            "is_liked": bool(await self.repo.get_like_by_user_and_post(current_user_id, post_id))
         }
 
     def ensure_can_modify_post(self, post, user):
@@ -168,7 +170,7 @@ class PostService:
     async def add_like(self, post_id: int, current_user: User):
         post = await self.get_post_by_id_or_raise(post_id)
 
-        if await get_like_by_user_and_post(self.db, current_user.id, post_id):
+        if await self.repo.get_like_by_user_and_post(current_user.id, post_id):
             raise HTTPException(status_code=400, detail="Like already exists")
         
         new_like = Like(
@@ -202,7 +204,7 @@ class PostService:
         if cached:
             return cached
         
-        await get_user_by_id_or_404(self.db, user_id)
+        await self.user.get_by_id_or_raise(user_id)
         
         posts = await self.repo.get_posts_by_user_id(user_id)
 
@@ -241,7 +243,7 @@ class PostService:
     
         await self.get_post_by_id_or_raise(post_id)
 
-        like = await get_like_by_user_and_post(self.db, current_user.id, post_id)
+        like = await self.repo.get_like_by_user_and_post(current_user.id, post_id)
 
         like_data = {
             "message": bool(like)
@@ -347,7 +349,7 @@ class PostService:
     async def remove_like(self, post_id: int, current_user: User):
         await self.get_post_by_id_or_raise(post_id)
 
-        like = await get_like_by_user_and_post(self.db, current_user.id, post_id)
+        like = await self.repo.get_like_by_user_and_post(current_user.id, post_id)
 
         if not like:
             raise HTTPException(status_code=404, detail="Like not found")

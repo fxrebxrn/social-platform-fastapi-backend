@@ -39,6 +39,7 @@ class UserShort(BaseModel):
     id: int
     name: str
     avatar_url: Optional[str] = None
+    role: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

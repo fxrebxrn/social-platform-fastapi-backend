@@ -7,6 +7,10 @@ from utils.redis_cache import redis_delete
 from utils.permissions import ensure_can_modify_post
 from core.exceptions import AttachmentNotFoundError
 from services.base_repository import BaseRepository
+import os
+import uuid
+from PIL import Image, UnidentifiedImageError
+from io import BytesIO
 
 class AttachmentService:
     def __init__(self, db: AsyncSession):
@@ -80,4 +84,66 @@ class AttachmentService:
 
         return {
             "message": f"Attachment from post {post_id} deleted successfully"
+        }
+
+    async def change_avatar(self, current_user: User, avatar: UploadFile):
+        allowed_types = ["image/jpeg", "image/png", "image/webp"]
+
+        if avatar.content_type not in allowed_types:
+            raise HTTPException(status_code=400, detail="Invalid avatar type")
+
+        content = await avatar.read()
+        if len(content) > 2 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Avatar size must be less than 2 MB")
+        
+        try:
+            image = Image.open(BytesIO(content))
+            image.load()
+        except UnidentifiedImageError:
+            raise HTTPException(status_code=400, detail="Invalid image file")
+        
+        image.thumbnail((512, 512))
+
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
+        os.makedirs("media/avatars", exist_ok=True)
+        
+        filename = f"{uuid.uuid4()}.webp"
+        file_path = os.path.join("media", "avatars", filename)
+
+        if current_user.avatar_url:
+            old_path_avatar = os.path.join("media", current_user.avatar_url)
+            if os.path.exists(old_path_avatar):
+                os.remove(old_path_avatar)
+
+        image.save(file_path, format="WEBP", quality=85)
+
+        current_user.avatar_url = f"avatars/{filename}"
+
+        await self.base_repo.commit_refresh(current_user)
+        await avatar.close()
+
+        await redis_delete(f"user:{current_user.id}:profile")
+
+        return {
+            "message": "Avatar uploaded successfully",
+            "avatar_url": current_user.avatar_url
+        }
+
+    async def remove_avatar(self, current_user: User):
+        if not current_user.avatar_url:
+            raise HTTPException(status_code=404, detail="Avatar not found")
+        
+        delete_media_file(current_user.avatar_url)
+
+        current_user.avatar_url = None
+
+        await self.base_repo.commit_refresh(current_user)
+
+        await redis_delete(f"user:{current_user.id}:profile")
+        await redis_delete(f"user:{current_user.id}:posts")
+
+        return {
+            "message": "Avatar deleted successfully"
         }

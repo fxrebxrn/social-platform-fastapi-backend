@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from models import Post, PostAttachment
+from models import PostAttachment
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
-from utils.query_helpers import fetch_all_by_stmt, fetch_first_by_stmt, get_scalar_result
+from utils.query_helpers import fetch_first_by_stmt, get_scalar_result
 
 class AttachmentRepository:
     def __init__(self, db: AsyncSession):

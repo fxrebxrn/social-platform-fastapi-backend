@@ -46,3 +46,11 @@ class PostRepository:
                     .offset(offset)
                     )
         return await fetch_all_by_stmt(self.db, stmt)
+
+    async def get_like_by_user_and_post(self, user_id: int, post_id: int):
+        stmt = select(Like).where(Like.user_id == user_id, Like.post_id == post_id)
+        return await fetch_first_by_stmt(self.db, stmt)
+
+    async def get_count_posts_by_user(self, user_id):
+        stmt = select(func.count()).select_from(Post).where(Post.user_id == user_id)
+        return await get_scalar_result(self.db, stmt)

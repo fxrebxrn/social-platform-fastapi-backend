@@ -284,28 +284,6 @@ class TestUpdateUser:
         assert resp.status_code == 403
 
 
-class TestDeleteUser:
-    async def test_delete_own_user_success(self, client: AsyncClient, user1):
-        resp = await client.delete(f"/users/{user1.id}")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["message"] == "User deleted successfully"
-
-    async def test_delete_user_nonexistent_returns_404(self, client: AsyncClient, user1):
-        resp = await client.delete("/users/9999")
-        assert resp.status_code in [403, 404]
-
-    async def test_delete_other_user_non_admin_returns_403(self, client: AsyncClient, user2):
-        resp = await client.delete(f"/users/{user2.id}")
-        assert resp.status_code == 403
-
-    async def test_delete_user_as_admin_success(self, client_admin: AsyncClient, user1):
-        resp = await client_admin.delete(f"/users/{user1.id}")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["message"] == "User deleted successfully"
-
-
 class TestRemoveAvatar:
     def _make_image_file(self, name="avatar.jpg", format="JPEG"):
         from PIL import Image

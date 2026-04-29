@@ -5,12 +5,12 @@ from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from core.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from utils.query_helpers import get_user_by_id
 from models import User
 from config.settings import settings
 import logging
 from core.exceptions import PermissionDeniedError, InvalidTokenError, ExpiredTokenError
 from typing import Annotated
+from services.user_repository import UserRepository
 
 ALLOWED_ROLES = ["user", "admin", "moderator", "helper"]
 
@@ -57,7 +57,9 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: An
         logger.warning(f"Invalid token, user not found: {user_id}")
         raise InvalidTokenError()
 
-    user = await get_user_by_id(db, user_id)
+    service = UserRepository(db)
+
+    user = await service.get_by_id(user_id)
 
     if not user:
         logger.warning(f"Invalid token, user not found: {user_id}")

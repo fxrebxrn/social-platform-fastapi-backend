@@ -44,3 +44,9 @@ async def redis_delete_many(keys: list[str]):
 async def invalidate_notify_cache(user_id: int):
     await redis_delete(f"user:{user_id}:notifications:all")
     await redis_delete(f"user:{user_id}:notifications:unread-count")
+
+async def invalidate_follow_cache(user_id: int, current_user):
+    await redis_delete(f"user:{user_id}:followers")
+    await redis_delete(f"user:{current_user.id}:following")
+    await redis_delete(f"user:{user_id}:profile")
+    await redis_delete(f"user:{current_user.id}:profile")
