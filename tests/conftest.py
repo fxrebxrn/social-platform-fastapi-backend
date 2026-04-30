@@ -21,6 +21,8 @@ patch.object(redis_client, "set", new_callable=AsyncMock).start()
 patch.object(redis_client, "delete", new_callable=AsyncMock).start()
 patch.object(redis_client, "scan", new_callable=AsyncMock, return_value=(0, [])).start()
 patch.object(redis_client, "sadd", new_callable=AsyncMock).start()
+patch.object(redis_client, "incr", new_callable=AsyncMock, return_value=1).start()
+patch.object(redis_client, "expire", new_callable=AsyncMock).start()
 
 pytest_plugins = ("pytest_asyncio",)
 
@@ -215,6 +217,31 @@ async def notification_follow(db_session: AsyncSession, user1: User, user2: User
         sender_id=user1.id,
         message=f"{user1.name} followed you",
         notification_type="follow"
+    )
+    db_session.add(notif)
+    await db_session.flush()
+    return notif
+
+@pytest_asyncio.fixture
+async def notification1(db_session: AsyncSession, user1: User, user2: User) -> Notification:
+    notif = Notification(
+        user_id=user1.id,
+        sender_id=user2.id,
+        message="You have a new message",
+        notification_type="message"
+    )
+    db_session.add(notif)
+    await db_session.flush()
+    return notif
+
+@pytest_asyncio.fixture
+async def notification_read(db_session: AsyncSession, user1: User, user2: User) -> Notification:
+    notif = Notification(
+        user_id=user1.id,
+        sender_id=user2.id,
+        message="Read notification",
+        notification_type="message",
+        is_read=True
     )
     db_session.add(notif)
     await db_session.flush()
