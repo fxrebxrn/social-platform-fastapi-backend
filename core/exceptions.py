@@ -61,3 +61,7 @@ class NotFoundError(AppError):
 class AttachmentNotFoundError(AppError):
     status_code = 404
     detail = "Attachment not found"
+
+class NotificationNotFoundError(AppError):
+    status_code = 404
+    detail = "Notification not found"
