@@ -8,6 +8,7 @@ from routers.notifications import router as notify_router
 from routers.chats import router as chats_router
 import logging
 from core.exceptions import AppError
+import os
 
 logger = logging.getLogger("app")
 logger.setLevel(logging.INFO)
@@ -25,6 +26,9 @@ file_handler.setFormatter(formatter)
 logger.handlers.clear()
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
+
+if not os.path.exists("media"):
+    os.makedirs("media")
 
 app = FastAPI()
 
