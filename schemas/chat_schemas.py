@@ -5,6 +5,12 @@ from schemas.util_schemas import AttachmentOut
 class MessageCreate(BaseModel):
     text: str = Field(min_length=1, max_length=1000)
 
+class ChatPartner(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
 class MessageItem(BaseModel):
     id: int
     chat_id: int
@@ -14,12 +20,6 @@ class MessageItem(BaseModel):
     is_read: bool
     created_at: datetime
     
-    model_config = ConfigDict(from_attributes=True)
-
-class ChatPartner(BaseModel):
-    id: int
-    name: str
-
     model_config = ConfigDict(from_attributes=True)
 
 class ChatListItem(BaseModel):
