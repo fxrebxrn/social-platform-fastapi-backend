@@ -115,11 +115,11 @@ Run the project with Docker Compose:
 docker compose up --build
 ```
 
-Run migrations
-
-```bash
-docker compose run --rm app alembic upgrade head
-```
+The app will automatically:
+- start PostgreSQL
+- start Redis
+- run Alembic migrations
+- start FastAPI
 
 Sevices:
 - FastAPI: http://localhost:8000
