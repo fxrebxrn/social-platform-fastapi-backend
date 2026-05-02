@@ -1,3 +1,6 @@
+![Tests](https://github.com/fxrebxrn/social-platform-fastapi-backend/actions/workflows/tests.yml/badge.svg)
+![Docker Build](https://github.com/fxrebxrn/social-platform-fastapi-backend/actions/workflows/docker.yml/badge.svg)
+
 # Social Platform API (FastAPI)
 
 A REST API for a social platform built with **FastAPI**.
