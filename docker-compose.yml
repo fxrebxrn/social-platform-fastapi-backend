@@ -1,0 +1,43 @@
+services: 
+  app:
+    build: .
+    container_name: social-api-app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/social_api_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SECRET_KEY=changeme
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - REFRESH_TOKEN_EXPIRE_DAYS=7
+      - DEBUG=false
+      - APP_ENV=prod
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./media:/app/media
+
+  db:
+    image: postgres:16-alpine
+    container_name: social-api-db
+    ports:
+      - "5434:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=social_api_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: social-api-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+    driver: local

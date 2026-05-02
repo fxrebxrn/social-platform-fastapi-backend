@@ -107,6 +107,26 @@ After startup:
 
 ---
 
+## Docker
+
+Run the project with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+Run migrations
+
+```bash
+docker compose run --rm app alembic upgrade head
+```
+
+Sevices:
+- FastAPI: http://localhost:8000
+- Open API docs: http://localhost:8000/docs
+- PostgreSQL: localhost:5434
+- Redis: localhost:6379
+
 ## Authentication
 
 JWT is used for auth:
