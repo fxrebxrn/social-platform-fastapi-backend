@@ -13,6 +13,7 @@ from PIL import Image, UnidentifiedImageError
 from io import BytesIO
 import aiofiles
 from utils.redis_cache import invalidate_chat_cache
+from core.exceptions import PostNotFoundError
 
 class AttachmentService:
     def __init__(self, db: AsyncSession):
@@ -27,18 +28,24 @@ class AttachmentService:
         
         return attachment
 
-    async def add_post_attachments(self, post: Post, files: list[UploadFile]):
-        if len(files) > 5:
-            raise HTTPException(status_code=400, detail="Maximum of 5 attachments allowed")
-
-        limit_count = await self.repo.get_post_attachment_count(post.id)
-
-        if limit_count + len(files) > 5:
-            raise HTTPException(status_code=400, detail=f"Maximum 5 attachments per post. Already uploaded: {limit_count}")
-
+    async def add_post_attachments(self, post_id: int, files: list[UploadFile], current_user: User):
         created_attachments = []
         saved_paths = []
         try:
+            post = await self.repo.get_post_for_update(post_id)
+            if not post:
+                raise PostNotFoundError()
+            
+            ensure_can_modify_post(post, current_user)
+
+            if len(files) > 5:
+                raise HTTPException(status_code=400, detail="Maximum of 5 attachments allowed")
+
+            limit_count = await self.repo.get_post_attachment_count(post.id)
+
+            if limit_count + len(files) > 5:
+                raise HTTPException(status_code=400, detail=f"Maximum 5 attachments per post. Already uploaded: {limit_count}")
+
             for file in files:
                 validate_attachment_type(file.content_type or "")
                 

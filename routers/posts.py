@@ -23,8 +23,8 @@ async def add_comment(post_id: int, comment: CommentCreate, current_user: Annota
 
 @router.post("/{post_id}/attachments", response_model=AttachmentResponse)
 async def upload_attachments_for_post(post_id: int, current_user: Annotated[User, Depends(get_current_user)], db: Annotated[AsyncSession, Depends(get_db)], files: list[UploadFile] = File(...)):
-    service = PostService(db)
-    return await service.add_attachments(post_id, files, current_user)
+    service = AttachmentService(db)
+    return await service.add_post_attachments(post_id, files, current_user)
 
 @router.post("/{post_id}/like", response_model=MessageResponse)
 async def add_like(post_id: int, current_user: Annotated[User, Depends(get_current_user)], db: Annotated[AsyncSession, Depends(get_db)]):

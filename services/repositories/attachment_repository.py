@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from models import PostAttachment, MessageAttachment, Message
+from models import PostAttachment, MessageAttachment, Message, Post
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from utils.query_helpers import fetch_first_by_stmt, get_scalar_result
@@ -26,4 +26,8 @@ class AttachmentRepository:
 
     async def get_messages_by_id(self, message_id):
         stmt = select(Message).options(selectinload(Message.attachments)).where(Message.id == message_id)
+        return await fetch_first_by_stmt(self.db, stmt)
+
+    async def get_post_for_update(self, post_id: int):
+        stmt = select(Post).where(Post.id == post_id).with_for_update()
         return await fetch_first_by_stmt(self.db, stmt)

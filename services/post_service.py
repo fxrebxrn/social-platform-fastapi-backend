@@ -90,12 +90,6 @@ class PostService:
         return {
             "message": "Post deleted"
         }
-    
-    async def add_attachments(self, post_id, files: list[UploadFile], current_user: User):
-        post = await self.get_post_by_id_or_raise(post_id)
-        self.ensure_can_modify_post(post, current_user)
-
-        return await self.att.add_post_attachments(post, files)
 
     async def new_post(self, post: PostCreate, current_user: User):
         new_post = Post(
