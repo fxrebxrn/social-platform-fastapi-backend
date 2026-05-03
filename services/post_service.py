@@ -181,7 +181,9 @@ class PostService:
         new_like = Like(
             user_id=current_user.id,
             post_id=post_id
-        )
+            )
+
+        new_notify = None
 
         if post.user_id != current_user.id:
             new_notify = Notification(
@@ -191,10 +193,20 @@ class PostService:
                 message=f"User {current_user.name} liked your post: {post.title}",
                 notification_type="like"
             )
-            await invalidate_notify_cache(post.user_id)
-            self.db.add(new_notify)
 
-        await self.base_repo.add(new_like)
+        objects = [new_like]
+
+        if new_notify is not None:
+            objects.append(new_notify)
+
+        await self.base_repo.add_unique_objects(
+            objects=objects,
+            detail="Like already exists",
+            refresh_obj=new_like
+        )
+
+        if new_notify is not None:
+            await invalidate_notify_cache(post.user_id)
         await redis_delete(f"post:{post_id}:full")
         await redis_delete(f"post:{post_id}:likes")
 

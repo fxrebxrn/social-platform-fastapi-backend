@@ -90,7 +90,13 @@ class ChatService:
             user2_id=user2
         )
 
-        await self.base_repo.add(new_chat)
+        objects = [new_chat]
+
+        await self.base_repo.add_unique_objects(
+            objects=objects,
+            detail="Chat already exists",
+            refresh_obj=new_chat
+        )
         await redis_delete_by_prefix(f"user:{current_user.id}:all-chats")
         await redis_delete_by_prefix(f"user:{user_id}:all-chats")
 

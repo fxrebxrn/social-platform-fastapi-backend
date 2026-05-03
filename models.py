@@ -5,6 +5,9 @@ from core.database import Base
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        UniqueConstraint("email", name="unique_user"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
@@ -97,6 +100,9 @@ class Notification(Base):
 
 class Chat(Base):
     __tablename__ = "chats"
+    __table_args__ = (
+        UniqueConstraint("user1_id", "user2_id", name="unique_chat"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user1_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)

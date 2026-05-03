@@ -33,7 +33,13 @@ class AuthService:
             hashed_password=hashed_password
         )
 
-        await self.base_repo.add(new_user)
+        objects = [new_user]
+
+        await self.base_repo.add_unique_objects(
+            objects=objects,
+            detail="Email already exists",
+            refresh_obj=new_user
+        )
 
         return {
             "message": "User registered successfully",

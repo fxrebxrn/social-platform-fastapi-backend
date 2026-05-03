@@ -48,8 +48,13 @@ class UserService:
             notification_type="follow"
         )
 
-        self.db.add(new_notify)
-        await self.base_repo.add(new_follow)
+        objects = [new_follow, new_notify]
+
+        await self.base_repo.add_unique_objects(
+            objects=objects,
+            detail="Already following this user",
+            refresh_obj=new_follow
+        )
 
         await invalidate_follow_cache(user_id, current_user)
         await invalidate_notify_cache(user_id)
