@@ -182,7 +182,6 @@ class UserService:
             raise HTTPException(status_code=400, detail="Email already exists")
 
         user_to_update.name = user.name
-        user_to_update.age = user.age
         user_to_update.email = user.email
 
         await self.base_repo.commit_refresh(user_to_update)

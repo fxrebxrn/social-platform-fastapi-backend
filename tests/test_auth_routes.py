@@ -13,7 +13,6 @@ class TestRegisterRoutes:
     async def test_register_user_success(self, client: AsyncClient):
         payload = {
             "name": "New User",
-            "age": 22,
             "email": "newuser@test.com",
             "password": "strongpass"
         }
@@ -28,7 +27,6 @@ class TestRegisterRoutes:
     async def test_register_user_with_invalid_email(self, client: AsyncClient):
         payload = {
             "name": "User",
-            "age": 20,
             "email": "invalid-email",
             "password": "strongpass"
         }
@@ -39,7 +37,6 @@ class TestRegisterRoutes:
     async def test_register_user_with_short_password(self, client: AsyncClient):
         payload = {
             "name": "User",
-            "age": 20,
             "email": "user@test.com",
             "password": "short"
         }
@@ -50,7 +47,6 @@ class TestRegisterRoutes:
     async def test_register_user_duplicate_email(self, client: AsyncClient, user1):
         payload = {
             "name": "Another User",
-            "age": 28,
             "email": user1.email,
             "password": "anotherpass"
         }
@@ -64,7 +60,6 @@ class TestLoginRoutes:
     async def test_login_success(self, client: AsyncClient):
         register_payload = {
             "name": "Login User",
-            "age": 24,
             "email": "loginuser@test.com",
             "password": "loginpass123"
         }
@@ -84,7 +79,6 @@ class TestLoginRoutes:
     async def test_login_invalid_password(self, client: AsyncClient):
         register_payload = {
             "name": "Wrong Pass User",
-            "age": 26,
             "email": "wrongpass@test.com",
             "password": "correctpass123"
         }
@@ -120,7 +114,6 @@ class TestRefreshRoutes:
     async def test_refresh_token_success(self, client: AsyncClient):
         register_payload = {
             "name": "Refresh User",
-            "age": 30,
             "email": "refreshuser@test.com",
             "password": "refreshpass123"
         }
@@ -141,7 +134,6 @@ class TestRefreshRoutes:
     async def test_refresh_token_with_access_token(self, client: AsyncClient):
         register_payload = {
             "name": "Refresh Fail User",
-            "age": 31,
             "email": "refreshfail@test.com",
             "password": "refreshpass321"
         }

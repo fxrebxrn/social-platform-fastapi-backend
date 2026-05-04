@@ -6,7 +6,6 @@ decline_names = ["admin", "root", "test"]
 
 class UserBase(BaseModel):
     name: str = Field(min_length=1, max_length=50)
-    age: int = Field(ge=0, le=120)
     email: str = Field(min_length=5)
 
     @field_validator("name")

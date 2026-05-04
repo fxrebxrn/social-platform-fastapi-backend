@@ -8,7 +8,6 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, index=True)
-    age = Column(Integer)
     email = Column(String, unique=True, nullable=False)
     avatar_url = Column(String, nullable=True)
     role = Column(String, default="user")

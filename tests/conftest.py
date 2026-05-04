@@ -89,21 +89,21 @@ async def client(db_session: AsyncSession, user1: User):
 
 @pytest_asyncio.fixture
 async def user1(db_session: AsyncSession) -> User:
-    user = User(name="vasya_test", email="vasya@test.com", hashed_password="123", age=25)
+    user = User(name="vasya_test", email="vasya@test.com", hashed_password="123")
     db_session.add(user)
     await db_session.flush()
     return user
 
 @pytest_asyncio.fixture
 async def user2(db_session: AsyncSession) -> User:
-    user = User(name="petya_test", email="petya@test.com", hashed_password="123", age=30)
+    user = User(name="petya_test", email="petya@test.com", hashed_password="123")
     db_session.add(user)
     await db_session.flush()
     return user
 
 @pytest_asyncio.fixture
 async def user3(db_session: AsyncSession) -> User:
-    user = User(name="masha_test", email="masha@test.com", hashed_password="123", age=28)
+    user = User(name="masha_test", email="masha@test.com", hashed_password="123")
     db_session.add(user)
     await db_session.flush()
     return user
@@ -178,7 +178,7 @@ async def client_user3(db_session: AsyncSession, user3: User):
 
 @pytest_asyncio.fixture(scope="function")
 async def admin_user(db_session: AsyncSession) -> User:
-    user = User(name="admin_test", email="admin@test.com", hashed_password="123", role="admin", age=35)
+    user = User(name="admin_test", email="admin@test.com", hashed_password="123", role="admin")
     db_session.add(user)
     await db_session.flush()
     return user

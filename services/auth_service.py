@@ -28,7 +28,6 @@ class AuthService:
 
         new_user = User(
             name=user.name,
-            age=user.age,
             email=user.email,
             hashed_password=hashed_password
         )

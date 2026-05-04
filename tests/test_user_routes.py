@@ -242,7 +242,6 @@ class TestUpdateUser:
             f"/users/{user2.id}",
             json={
                 "name": "Updated Name",
-                "age": 30,
                 "email": "newemail@test.com"
             }
         )
@@ -255,7 +254,6 @@ class TestUpdateUser:
             "/users/99999",
             json={
                 "name": "Test User",
-                "age": 25,
                 "email": "test@test.com"
             }
         )
@@ -378,7 +376,6 @@ class TestEdgeCases:
             f"/users/{user2.id}",
             json={
                 "name": user2.name,
-                "age": user2.age,
                 "email": user2.email
             }
         )
