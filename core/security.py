@@ -1,8 +1,8 @@
-from passlib.context import CryptContext
+import bcrypt
 from jose import jwt, ExpiredSignatureError
 from datetime import datetime, timedelta, timezone
-from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends
 from core.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from models import User
@@ -15,8 +15,6 @@ from services.repositories.user_repository import UserRepository
 ALLOWED_ROLES = ["user", "admin", "moderator", "helper"]
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +33,16 @@ def create_refresh_token(data: dict) -> str:
     return encoded_jwt
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    pwd_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pwd_bytes, salt)
+    return hashed.decode('utf-8')
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(
+        password=plain_password.encode('utf-8'),
+        hashed_password=hashed_password.encode('utf-8')
+    )
 
 def decode_token(token: str):
     try:

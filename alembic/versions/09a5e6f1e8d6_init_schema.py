@@ -1,8 +1,8 @@
-"""initial schema
+"""init schema
 
-Revision ID: 85ca560f1041
+Revision ID: 09a5e6f1e8d6
 Revises: 
-Create Date: 2026-05-02 17:09:08.155921
+Create Date: 2026-05-04 10:27:34.888877
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '85ca560f1041'
+revision: str = '09a5e6f1e8d6'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -25,20 +25,17 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(), nullable=True),
     sa.Column('age', sa.Integer(), nullable=True),
-    sa.Column('email', sa.String(), nullable=True),
+    sa.Column('email', sa.String(), nullable=False),
     sa.Column('avatar_url', sa.String(), nullable=True),
     sa.Column('role', sa.String(), nullable=True),
     sa.Column('hashed_password', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('is_online', sa.Boolean(), nullable=True),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('email')
     )
-    op.create_index(op.f('ix_users_age'), 'users', ['age'], unique=False)
-    op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
-    op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
     op.create_index(op.f('ix_users_name'), 'users', ['name'], unique=False)
-    op.create_index(op.f('ix_users_role'), 'users', ['role'], unique=False)
     op.create_table('chats',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user1_id', sa.Integer(), nullable=False),
@@ -47,11 +44,13 @@ def upgrade() -> None:
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.ForeignKeyConstraint(['user1_id'], ['users.id'], ),
     sa.ForeignKeyConstraint(['user2_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('user1_id', 'user2_id', name='unique_chat')
     )
-    op.create_index(op.f('ix_chats_id'), 'chats', ['id'], unique=False)
     op.create_index(op.f('ix_chats_user1_id'), 'chats', ['user1_id'], unique=False)
+    op.create_index('ix_chats_user1_id_updated_at', 'chats', ['user1_id', 'updated_at'], unique=False)
     op.create_index(op.f('ix_chats_user2_id'), 'chats', ['user2_id'], unique=False)
+    op.create_index('ix_chats_user2_id_updated_at', 'chats', ['user2_id', 'updated_at'], unique=False)
     op.create_table('follows',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('follower_id', sa.Integer(), nullable=False),
@@ -64,7 +63,6 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_follows_follower_id'), 'follows', ['follower_id'], unique=False)
     op.create_index(op.f('ix_follows_following_id'), 'follows', ['following_id'], unique=False)
-    op.create_index(op.f('ix_follows_id'), 'follows', ['id'], unique=False)
     op.create_table('posts',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(), nullable=False),
@@ -74,9 +72,8 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_posts_id'), 'posts', ['id'], unique=False)
-    op.create_index(op.f('ix_posts_title'), 'posts', ['title'], unique=False)
     op.create_index(op.f('ix_posts_user_id'), 'posts', ['user_id'], unique=False)
+    op.create_index('ix_posts_user_id_created_at', 'posts', ['user_id', 'created_at'], unique=False)
     op.create_table('comments',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('text', sa.String(), nullable=False),
@@ -89,10 +86,9 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_comments_id'), 'comments', ['id'], unique=False)
     op.create_index(op.f('ix_comments_parent_id'), 'comments', ['parent_id'], unique=False)
     op.create_index(op.f('ix_comments_post_id'), 'comments', ['post_id'], unique=False)
-    op.create_index(op.f('ix_comments_text'), 'comments', ['text'], unique=False)
+    op.create_index('ix_comments_post_id_created_at', 'comments', ['post_id', 'created_at'], unique=False)
     op.create_index(op.f('ix_comments_user_id'), 'comments', ['user_id'], unique=False)
     op.create_table('likes',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -104,7 +100,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id', 'post_id', name='unique_like')
     )
-    op.create_index(op.f('ix_likes_id'), 'likes', ['id'], unique=False)
     op.create_index(op.f('ix_likes_post_id'), 'likes', ['post_id'], unique=False)
     op.create_index(op.f('ix_likes_user_id'), 'likes', ['user_id'], unique=False)
     op.create_table('messages',
@@ -119,10 +114,10 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_messages_chat_id'), 'messages', ['chat_id'], unique=False)
-    op.create_index(op.f('ix_messages_id'), 'messages', ['id'], unique=False)
-    op.create_index(op.f('ix_messages_is_read'), 'messages', ['is_read'], unique=False)
+    op.create_index('ix_messages_chat_id_created_at', 'messages', ['chat_id', 'created_at'], unique=False)
+    op.create_index('ix_messages_chat_id_is_read', 'messages', ['chat_id', 'is_read'], unique=False)
+    op.create_index('ix_messages_chat_id_is_read_sender_id', 'messages', ['chat_id', 'is_read', 'sender_id'], unique=False)
     op.create_index(op.f('ix_messages_sender_id'), 'messages', ['sender_id'], unique=False)
-    op.create_index(op.f('ix_messages_text'), 'messages', ['text'], unique=False)
     op.create_table('post_attachments',
     sa.Column('post_id', sa.Integer(), nullable=False),
     sa.Column('id', sa.Integer(), nullable=False),
@@ -133,10 +128,6 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['post_id'], ['posts.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_post_attachments_file_type'), 'post_attachments', ['file_type'], unique=False)
-    op.create_index(op.f('ix_post_attachments_file_url'), 'post_attachments', ['file_url'], unique=False)
-    op.create_index(op.f('ix_post_attachments_id'), 'post_attachments', ['id'], unique=False)
-    op.create_index(op.f('ix_post_attachments_original_name'), 'post_attachments', ['original_name'], unique=False)
     op.create_index(op.f('ix_post_attachments_post_id'), 'post_attachments', ['post_id'], unique=False)
     op.create_table('message_attachments',
     sa.Column('message_id', sa.Integer(), nullable=False),
@@ -148,11 +139,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['message_id'], ['messages.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_message_attachments_file_type'), 'message_attachments', ['file_type'], unique=False)
-    op.create_index(op.f('ix_message_attachments_file_url'), 'message_attachments', ['file_url'], unique=False)
-    op.create_index(op.f('ix_message_attachments_id'), 'message_attachments', ['id'], unique=False)
     op.create_index(op.f('ix_message_attachments_message_id'), 'message_attachments', ['message_id'], unique=False)
-    op.create_index(op.f('ix_message_attachments_original_name'), 'message_attachments', ['original_name'], unique=False)
     op.create_table('notifications',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -170,72 +157,53 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_notifications_comment_id'), 'notifications', ['comment_id'], unique=False)
-    op.create_index(op.f('ix_notifications_id'), 'notifications', ['id'], unique=False)
-    op.create_index(op.f('ix_notifications_is_read'), 'notifications', ['is_read'], unique=False)
-    op.create_index(op.f('ix_notifications_message'), 'notifications', ['message'], unique=False)
-    op.create_index(op.f('ix_notifications_notification_type'), 'notifications', ['notification_type'], unique=False)
     op.create_index(op.f('ix_notifications_post_id'), 'notifications', ['post_id'], unique=False)
     op.create_index(op.f('ix_notifications_sender_id'), 'notifications', ['sender_id'], unique=False)
     op.create_index(op.f('ix_notifications_user_id'), 'notifications', ['user_id'], unique=False)
+    op.create_index('ix_notifications_user_id_created_at', 'notifications', ['user_id', 'created_at'], unique=False)
+    op.create_index('ix_notifications_user_id_is_read', 'notifications', ['user_id', 'is_read'], unique=False)
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_index('ix_notifications_user_id_is_read', table_name='notifications')
+    op.drop_index('ix_notifications_user_id_created_at', table_name='notifications')
     op.drop_index(op.f('ix_notifications_user_id'), table_name='notifications')
     op.drop_index(op.f('ix_notifications_sender_id'), table_name='notifications')
     op.drop_index(op.f('ix_notifications_post_id'), table_name='notifications')
-    op.drop_index(op.f('ix_notifications_notification_type'), table_name='notifications')
-    op.drop_index(op.f('ix_notifications_message'), table_name='notifications')
-    op.drop_index(op.f('ix_notifications_is_read'), table_name='notifications')
-    op.drop_index(op.f('ix_notifications_id'), table_name='notifications')
     op.drop_index(op.f('ix_notifications_comment_id'), table_name='notifications')
     op.drop_table('notifications')
-    op.drop_index(op.f('ix_message_attachments_original_name'), table_name='message_attachments')
     op.drop_index(op.f('ix_message_attachments_message_id'), table_name='message_attachments')
-    op.drop_index(op.f('ix_message_attachments_id'), table_name='message_attachments')
-    op.drop_index(op.f('ix_message_attachments_file_url'), table_name='message_attachments')
-    op.drop_index(op.f('ix_message_attachments_file_type'), table_name='message_attachments')
     op.drop_table('message_attachments')
     op.drop_index(op.f('ix_post_attachments_post_id'), table_name='post_attachments')
-    op.drop_index(op.f('ix_post_attachments_original_name'), table_name='post_attachments')
-    op.drop_index(op.f('ix_post_attachments_id'), table_name='post_attachments')
-    op.drop_index(op.f('ix_post_attachments_file_url'), table_name='post_attachments')
-    op.drop_index(op.f('ix_post_attachments_file_type'), table_name='post_attachments')
     op.drop_table('post_attachments')
-    op.drop_index(op.f('ix_messages_text'), table_name='messages')
     op.drop_index(op.f('ix_messages_sender_id'), table_name='messages')
-    op.drop_index(op.f('ix_messages_is_read'), table_name='messages')
-    op.drop_index(op.f('ix_messages_id'), table_name='messages')
+    op.drop_index('ix_messages_chat_id_is_read_sender_id', table_name='messages')
+    op.drop_index('ix_messages_chat_id_is_read', table_name='messages')
+    op.drop_index('ix_messages_chat_id_created_at', table_name='messages')
     op.drop_index(op.f('ix_messages_chat_id'), table_name='messages')
     op.drop_table('messages')
     op.drop_index(op.f('ix_likes_user_id'), table_name='likes')
     op.drop_index(op.f('ix_likes_post_id'), table_name='likes')
-    op.drop_index(op.f('ix_likes_id'), table_name='likes')
     op.drop_table('likes')
     op.drop_index(op.f('ix_comments_user_id'), table_name='comments')
-    op.drop_index(op.f('ix_comments_text'), table_name='comments')
+    op.drop_index('ix_comments_post_id_created_at', table_name='comments')
     op.drop_index(op.f('ix_comments_post_id'), table_name='comments')
     op.drop_index(op.f('ix_comments_parent_id'), table_name='comments')
-    op.drop_index(op.f('ix_comments_id'), table_name='comments')
     op.drop_table('comments')
+    op.drop_index('ix_posts_user_id_created_at', table_name='posts')
     op.drop_index(op.f('ix_posts_user_id'), table_name='posts')
-    op.drop_index(op.f('ix_posts_title'), table_name='posts')
-    op.drop_index(op.f('ix_posts_id'), table_name='posts')
     op.drop_table('posts')
-    op.drop_index(op.f('ix_follows_id'), table_name='follows')
     op.drop_index(op.f('ix_follows_following_id'), table_name='follows')
     op.drop_index(op.f('ix_follows_follower_id'), table_name='follows')
     op.drop_table('follows')
+    op.drop_index('ix_chats_user2_id_updated_at', table_name='chats')
     op.drop_index(op.f('ix_chats_user2_id'), table_name='chats')
+    op.drop_index('ix_chats_user1_id_updated_at', table_name='chats')
     op.drop_index(op.f('ix_chats_user1_id'), table_name='chats')
-    op.drop_index(op.f('ix_chats_id'), table_name='chats')
     op.drop_table('chats')
-    op.drop_index(op.f('ix_users_role'), table_name='users')
     op.drop_index(op.f('ix_users_name'), table_name='users')
-    op.drop_index(op.f('ix_users_id'), table_name='users')
-    op.drop_index(op.f('ix_users_email'), table_name='users')
-    op.drop_index(op.f('ix_users_age'), table_name='users')
     op.drop_table('users')
     # ### end Alembic commands ###
