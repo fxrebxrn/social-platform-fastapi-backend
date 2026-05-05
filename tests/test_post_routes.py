@@ -227,11 +227,7 @@ class TestGetUserFeed:
     @pytest.mark.asyncio
     async def test_get_user_feed_limit_too_high(self, client: AsyncClient, follow_1_2: Follow, post2: Post):
         response = await client.get("/posts/feed?limit=100")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["limit"] == 50
-        assert data["has_more"] is False
-        assert data["next_cursor"] is None
+        assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_get_user_feed_cursor_pagination(self, client: AsyncClient, follow_1_2: Follow, post2: Post, db_session: AsyncSession, user2: User):
