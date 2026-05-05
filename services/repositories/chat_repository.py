@@ -1,8 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from models import Chat, Message
-from sqlalchemy import select, func, or_, update
+from sqlalchemy import select, func, or_, update, and_
 from sqlalchemy.orm import selectinload, aliased
 from utils.query_helpers import fetch_first_by_stmt, get_scalar_result, fetch_all_by_stmt
+from datetime import datetime
 
 class ChatRepository:
     def __init__(self, db: AsyncSession):
@@ -28,18 +29,33 @@ class ChatRepository:
         stmt = select(Chat).where(Chat.user1_id == user1, Chat.user2_id == user2)
         return await fetch_first_by_stmt(self.db, stmt)
     
-    async def get_messages(self, chat_id, limit, offset):
-        stmt = select(Message).options(selectinload(Message.sender), selectinload(Message.attachments)).where(Message.chat_id == chat_id).order_by(Message.created_at.asc()).limit(limit).offset(offset)
+    async def get_messages(self, chat_id: int, limit: int, cursor_created_at: datetime | None = None, cursor_id: int | None = None):
+        stmt = (select(Message).options(selectinload(Message.sender), selectinload(Message.attachments))
+                .where(Message.chat_id == chat_id)
+                .order_by(Message.created_at.desc(), Message.id.desc())
+                .limit(limit + 1))
+        
+        if cursor_created_at is not None and cursor_id is not None:
+            stmt = stmt.where(
+                or_(
+                    Message.created_at < cursor_created_at,
+                    and_(
+                        Message.created_at == cursor_created_at,
+                        Message.id < cursor_id
+                    )
+                )
+            )
+
         return await fetch_all_by_stmt(self.db, stmt)
     
     async def get_unread_count(self, chat_id, current_user):
         stmt = select(func.count()).select_from(Message).where(Message.chat_id == chat_id, Message.sender_id != current_user.id, Message.is_read == False)
         return await get_scalar_result(self.db, stmt)
 
-    async def get_all_chats(self, current_user, limit, offset) -> list[dict]:
+    async def get_all_chats(self, current_user, limit, cursor_updated_at: datetime | None = None, cursor_id: int | None = None) -> list[dict]:
         unread_subq = (
             select(Message.chat_id, func.count(Message.id).label("count"))
-            .where(Message.sender_id != current_user.id, Message.is_read == False)
+            .where(Message.sender_id != current_user.id, Message.is_read.is_(False))
             .group_by(Message.chat_id)
             .subquery()
         )
@@ -49,7 +65,7 @@ class ChatRepository:
                 Message,
                 func.row_number().over(
                     partition_by=Message.chat_id, 
-                    order_by=Message.id.desc()
+                    order_by=(Message.created_at.desc(), Message.id.desc())
                 ).label("rn")
             )
             .subquery()
@@ -71,8 +87,19 @@ class ChatRepository:
                 selectinload(last_msg_alias.attachments)
             )
             .where(or_(Chat.user1_id == current_user.id, Chat.user2_id == current_user.id))
-            .order_by(Chat.updated_at.desc()).limit(limit).offset(offset)
+            .order_by(Chat.updated_at.desc(), Chat.id.desc()).limit(limit + 1)
         )
+
+        if cursor_updated_at is not None and cursor_id is not None:
+            stmt = stmt.where(
+                or_(
+                    Chat.updated_at < cursor_updated_at,
+                    and_(
+                        Chat.updated_at == cursor_updated_at,
+                        Chat.id < cursor_id
+                    )
+                )
+            )
 
         result = await self.db.execute(stmt)
         

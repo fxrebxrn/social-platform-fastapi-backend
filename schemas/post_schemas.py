@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, field_serializer, ConfigDict
 from datetime import datetime
 from schemas.user_schemas import UserShort
 from typing import Optional, List
-from schemas.util_schemas import AttachmentOut
+from schemas.util_schemas import AttachmentOut, CursorOut
 
 class PostCreate(BaseModel):
     title: str = Field(min_length=1, max_length=50)
@@ -85,16 +85,7 @@ class FullPostResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-class NextCursor(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    created_at: datetime
-    id: int
-
-class FeedResponse(BaseModel):
+class FeedResponse(CursorOut):
     model_config = ConfigDict(from_attributes=True)
 
     items: list[PostWithUser]
-    limit: int
-    next_cursor: Optional[NextCursor] = None
-    has_more: bool

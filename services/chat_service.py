@@ -10,6 +10,7 @@ from utils.redis_cache import redis_delete_many, redis_delete_by_prefix, invalid
 from services.attachment_service import AttachmentService
 from services.user_service import UserService
 from services.repositories.attachment_repository import AttachmentRepository
+from datetime import datetime
 
 class ChatService:
     def __init__(self, db: AsyncSession):
@@ -105,27 +106,44 @@ class ChatService:
             "chat_id": new_chat.id
         }
     
-    async def get_messages_from_chat(self, chat_id: int, current_user: User, limit: int, offset: int):
-        cache_key = f"chat:{chat_id}:messages:{limit}:{offset}"
-        cached = await redis_get(cache_key)
-        
-        if cached:
-            return cached
-        
+    async def get_chat_messages(self, chat_id: int, current_user: User, limit: int, cursor_created_at: datetime | None = None, cursor_id: int | None = None):
         if limit > 50:
             limit = 50
 
+        if (cursor_created_at is None) != (cursor_id is None):
+            raise HTTPException(
+                status_code=400,
+                detail="cursor_created_at and cursor_id must be provided together"
+            )
+
         await self.get_if_participant(chat_id, current_user.id)
 
-        messages = await self.repo.get_messages(chat_id, limit, offset)
+        messages_desc = await self.repo.get_messages(chat_id, limit, cursor_created_at, cursor_id)
+        has_more = len(messages_desc) > limit
 
-        messages_data = [
-            MessageItem.model_validate(m).model_dump(mode="json") for m in messages
+        items_desc = messages_desc[:limit]
+        items = list(reversed(items_desc))
+
+        next_cursor = None
+        if has_more and items:
+            oldest_item = items[0]
+            next_cursor = {
+                "created_at": oldest_item.created_at,
+                "id": oldest_item.id
+            }
+
+        items_json = [
+            MessageItem.model_validate(i).model_dump(mode="json") for i in items
         ]
 
-        await redis_set(cache_key, messages_data, 60)
-        
-        return messages_data
+        response_data = {
+            "items": items_json,
+            "limit": limit,
+            "next_cursor": next_cursor,
+            "has_more": has_more
+        }
+
+        return response_data
 
     async def get_count_of_unread_messages(self, chat_id: int, current_user: User):
         cache_key = f"chat:{chat_id}:user:{current_user.id}:unread-count"
@@ -146,28 +164,39 @@ class ChatService:
 
         return count_data
     
-    async def get_all_user_chats(self, current_user: User, limit: int, offset: int):
-        cache_key = f"user:{current_user.id}:all-chats:{limit}:{offset}"
-        cached = await redis_get(cache_key)
-        
-        if cached:
-            return cached
-        
+    async def get_all_user_chats(self, current_user: User, limit: int, cursor_updated_at: datetime | None = None, cursor_id: int | None = None):
         if limit > 50:
             limit = 50 
+
+        if (cursor_updated_at is None) != (cursor_id is None):
+            raise HTTPException(
+                status_code=400,
+                detail="cursor_updated_at and cursor_id must be provided together"
+            )
         
-        result_data = await self.repo.get_all_chats(current_user, limit, offset)
+        chats = await self.repo.get_all_chats(current_user, limit, cursor_updated_at, cursor_id)
 
-        validated_items = []
-        for item in result_data:
-            validated_item = ChatListItem.model_validate(item).model_dump(mode="json")
-            validated_items.append(validated_item)
+        has_more = len(chats) > limit
+        items = chats[:limit]
+        
+        next_cursor = None
+        if has_more and items:
+            last_item = items[-1]
+            next_cursor = {
+                "updated_at": last_item["updated_at"],
+                "id": last_item["chat_id"]
+            }
 
-        final_response = {"items": validated_items}
+        items_json = [ChatListItem.model_validate(i).model_dump(mode='json') for i in items]
 
-        await redis_set(cache_key, final_response, 60)
+        response_data = {
+            "items": items_json,
+            "limit": limit,
+            "next_cursor": next_cursor,
+            "has_more": has_more
+        }
 
-        return final_response
+        return response_data
     
     async def read_all_messages_in_chat(self, chat_id: int, current_user: User):
         chat = await self.get_if_participant(chat_id, current_user.id)

@@ -44,3 +44,16 @@ class TokenOutResponse(RefreshTokenOutResponse):
     refresh_token: str
 
     model_config = ConfigDict(from_attributes=True)
+
+class NextCursor(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    created_at: datetime
+    id: int
+
+class CursorOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    limit: int
+    next_cursor: Optional[NextCursor] = None
+    has_more: bool

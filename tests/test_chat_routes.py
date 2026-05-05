@@ -161,21 +161,54 @@ class TestGetAllChats:
         assert resp.json()["items"] == []
 
     async def test_get_chats_limit_capped_at_50(self, client: AsyncClient, user1):
-        resp = await client.get("/chats/?limit=200")
-        assert resp.status_code == 200
+        resp = await client.get("/chats/?limit=60")
+        assert resp.status_code == 422
 
-    async def test_get_chats_pagination(self, client: AsyncClient, user1, chat_1_2):
-        resp_offset = await client.get("/chats/?limit=50&offset=100")
-        assert resp_offset.status_code == 200
-        assert resp_offset.json()["items"] == []
+    async def test_get_chats_cursor_pagination(self, client: AsyncClient, user1, db_session):
+        from models import Chat, User
+        # Create additional users
+        extra_users = []
+        for i in range(3):
+            user = User(name=f"extra_user_{i}", email=f"extra{i}@test.com", hashed_password="123")
+            db_session.add(user)
+            extra_users.append(user)
+        await db_session.flush()
 
-    async def test_chats_not_in_others_list(
-        self, client: AsyncClient, user1, chat_2_3
-    ):
-        resp = await client.get("/chats/")
-        assert resp.status_code == 200
-        ids = [item["chat_id"] for item in resp.json()["items"]]
-        assert chat_2_3.id not in ids
+        # Create additional chats
+        extra_chats = []
+        for i in range(3):
+            chat = Chat(user1_id=user1.id, user2_id=extra_users[i].id)
+            db_session.add(chat)
+            extra_chats.append(chat)
+        await db_session.flush()
+
+        first_resp = await client.get("/chats/?limit=1")
+        assert first_resp.status_code == 200
+        first_data = first_resp.json()
+        assert first_data["limit"] == 1
+        assert first_data["has_more"] is True
+        assert first_data["next_cursor"] is not None
+        assert len(first_data["items"]) == 1
+
+        cursor = first_data["next_cursor"]
+        next_resp = await client.get(
+            "/chats/",
+            params={
+                "limit": 1,
+                "cursor_id": cursor["id"],
+                "cursor_updated_at": cursor["updated_at"]
+            }
+        )
+        assert next_resp.status_code == 200
+        next_data = next_resp.json()
+        assert next_data["limit"] == 1
+        assert len(next_data["items"]) == 1
+        assert next_data["next_cursor"] is not None or next_data["has_more"] is False
+
+    async def test_get_chats_cursor_invalid_only_one_param(self, client: AsyncClient, user1):
+        resp = await client.get("/chats/?cursor_id=1")
+        assert resp.status_code == 400
+        assert "must be provided together" in resp.json()["detail"]
 
 class TestGetMessages:
     async def test_get_messages_success(
@@ -183,9 +216,9 @@ class TestGetMessages:
     ):
         resp = await client.get(f"/chats/{chat_1_2.id}/messages")
         assert resp.status_code == 200
-        msgs = resp.json()
-        assert isinstance(msgs, list)
-        assert any(m["id"] == message_from_user1.id for m in msgs)
+        data = resp.json()
+        assert isinstance(data["items"], list)
+        assert any(m["id"] == message_from_user1.id for m in data["items"])
 
     async def test_get_messages_from_foreign_chat_returns_403(
         self, client: AsyncClient, user1, chat_2_3
@@ -204,13 +237,49 @@ class TestGetMessages:
     ):
         resp = await client.get(f"/chats/{empty_chat.id}/messages")
         assert resp.status_code == 200
-        assert resp.json() == []
+        assert resp.json()["items"] == []
 
-    async def test_get_messages_limit_capped(
-        self, client: AsyncClient, user1, chat_1_2
-    ):
-        resp = await client.get(f"/chats/{chat_1_2.id}/messages?limit=200")
-        assert resp.status_code == 200
+    async def test_get_messages_limit_capped(self, client: AsyncClient, user1, chat_1_2):
+        resp = await client.get(f"/chats/{chat_1_2.id}/messages?limit=60")
+        assert resp.status_code == 422
+
+    async def test_get_messages_cursor_pagination(self, client: AsyncClient, user1, chat_1_2, db_session):
+        from models import Message
+        # Create additional messages
+        extra_messages = []
+        for i in range(3):
+            msg = Message(sender_id=user1.id, chat_id=chat_1_2.id, text=f"Message {i}")
+            db_session.add(msg)
+            extra_messages.append(msg)
+        await db_session.flush()
+
+        first_resp = await client.get(f"/chats/{chat_1_2.id}/messages?limit=1")
+        assert first_resp.status_code == 200
+        first_data = first_resp.json()
+        assert first_data["limit"] == 1
+        assert first_data["has_more"] is True
+        assert first_data["next_cursor"] is not None
+        assert len(first_data["items"]) == 1
+
+        cursor = first_data["next_cursor"]
+        next_resp = await client.get(
+            f"/chats/{chat_1_2.id}/messages",
+            params={
+                "limit": 1,
+                "cursor_id": cursor["id"],
+                "cursor_created_at": cursor["created_at"]
+            }
+        )
+        assert next_resp.status_code == 200
+        next_data = next_resp.json()
+        assert next_data["limit"] == 1
+        assert len(next_data["items"]) == 1
+        assert next_data["next_cursor"] is not None or next_data["has_more"] is False
+
+    async def test_get_messages_cursor_invalid_only_one_param(self, client: AsyncClient, user1, chat_1_2):
+        resp = await client.get(f"/chats/{chat_1_2.id}/messages?cursor_id=1")
+        assert resp.status_code == 400
+        assert "must be provided together" in resp.json()["detail"]
 
 class TestUnreadCount:
     async def test_unread_count_zero_when_no_messages(

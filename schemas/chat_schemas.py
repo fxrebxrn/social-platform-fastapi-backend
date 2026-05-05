@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field, field_serializer, field_validator, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
-from schemas.util_schemas import AttachmentOut
+from schemas.util_schemas import AttachmentOut, CursorOut
+from typing import Optional
 
 class MessageCreate(BaseModel):
     text: str = Field(min_length=1, max_length=1000)
@@ -32,7 +33,20 @@ class ChatListItem(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
-class ChatListResponse(BaseModel):
+class NextCursorChat(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    updated_at: datetime
+    id: int
+
+class CursorOutChat(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    limit: int
+    next_cursor: Optional[NextCursorChat] = None
+    has_more: bool
+
+class ChatListResponse(CursorOutChat):
     items: list[ChatListItem]
 
     model_config = ConfigDict(from_attributes=True)
@@ -48,3 +62,8 @@ class WithMessageResponse(BaseModel):
     data: MessageItem
 
     model_config = ConfigDict(from_attributes=True)
+
+class AllMessagesReponse(CursorOut):
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[MessageItem]

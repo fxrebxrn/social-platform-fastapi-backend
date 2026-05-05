@@ -286,6 +286,12 @@ class PostService:
         if limit > 50:
             limit = 50
 
+        if (cursor_created_at is None) != (cursor_id is None):
+            raise HTTPException(
+                status_code=400,
+                detail="cursor_created_at and cursor_id must be provided together"
+            )
+
         posts = await self.repo.get_user_feed_cursor(current_user.id, limit, cursor_created_at, cursor_id)
         has_more = len(posts) > limit
         items = posts[:limit]
