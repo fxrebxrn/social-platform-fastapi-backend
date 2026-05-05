@@ -1,8 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from models import Post, Like, Comment, Follow
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_, and_
 from sqlalchemy.orm import selectinload
 from utils.query_helpers import fetch_all_by_stmt, fetch_first_by_stmt, get_scalar_result
+from datetime import datetime
 
 class PostRepository:
     def __init__(self, db: AsyncSession):
@@ -32,19 +33,23 @@ class PostRepository:
         stmt = select(Post).where(Post.user_id == user_id).options(selectinload(Post.attachments), selectinload(Post.user))
         return await fetch_all_by_stmt(self.db, stmt)
 
-    async def get_following_ids(self, user_id):
-        stmt = select(Follow.following_id).where(Follow.follower_id == user_id)
-        return await fetch_all_by_stmt(self.db, stmt)
-    
-    async def get_count_posts_by_following(self, following_ids):
-        stmt = select(func.count()).select_from(Post).where(Post.user_id.in_(following_ids))
-        return await get_scalar_result(self.db, stmt)
-
-    async def get_posts_by_following_limit_offset(self, following_ids, limit: int, offset: int):
-        stmt = (select(Post).options(selectinload(Post.user), selectinload(Post.attachments)).where(Post.user_id.in_(following_ids)).order_by(Post.created_at.desc())
-                    .limit(limit)
-                    .offset(offset)
+    async def get_user_feed_cursor(self, user_id: int, limit: int, cursor_created_at: datetime | None = None, cursor_id: int | None = None) -> list[Post]:
+        stmt = (select(Post).join(Follow, Follow.following_id == Post.user_id).where(Follow.follower_id == user_id)
+                .options(selectinload(Post.user), selectinload(Post.attachments))
+                .order_by(Post.created_at.desc(), Post.id.desc())
+                .limit(limit + 1))
+        
+        if cursor_created_at is not None and cursor_id is not None:
+            stmt = stmt.where(
+                or_(
+                    Post.created_at < cursor_created_at,
+                    and_(
+                        Post.created_at == cursor_created_at,
+                        Post.id < cursor_id
                     )
+                )
+            )
+
         return await fetch_all_by_stmt(self.db, stmt)
 
     async def get_like_by_user_and_post(self, user_id: int, post_id: int):

@@ -64,6 +64,9 @@ class UserService:
         }
     
     async def search_users(self, name: str, limit: int, offset: int):
+        if limit > 50:
+            limit = 50
+        
         if len(name) < 3 or len(name) > 50:
             raise HTTPException(status_code=400, detail="Name must be between 3 and 50 characters")
         

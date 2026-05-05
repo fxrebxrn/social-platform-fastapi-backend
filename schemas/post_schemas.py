@@ -24,12 +24,6 @@ class PostWithUser(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-class PaginatedPostResponse(BaseModel):
-    items: list[PostWithUser]
-    limit: int
-    offset: int
-    total: int
-
 class PostUpdate(BaseModel):
     title: str = Field(min_length=1, max_length=50)
 
@@ -90,3 +84,17 @@ class FullPostResponse(BaseModel):
     is_liked: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+class NextCursor(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    created_at: datetime
+    id: int
+
+class FeedResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[PostWithUser]
+    limit: int
+    next_cursor: Optional[NextCursor] = None
+    has_more: bool

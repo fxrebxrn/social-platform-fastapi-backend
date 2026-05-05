@@ -6,11 +6,12 @@ from core.exceptions import PostNotFoundError, PermissionDeniedError, CommentNot
 from schemas.post_schemas import PostData, UserShort, CommentOut, PostCreate, CommentCreate, PostWithUser, PostUpdate
 from services.repositories.post_repository import PostRepository
 from utils.media import delete_media_file
-from fastapi import UploadFile, HTTPException
+from fastapi import HTTPException
 from services.attachment_service import AttachmentService
 from utils.permissions import ensure_can_modify_post as check_can_modify_post
 from services.repositories.base_repository import BaseRepository
 from services.user_service import UserService
+from datetime import datetime
 
 class PostService:
     def __init__(self, db: AsyncSession):
@@ -281,39 +282,31 @@ class PostService:
 
         return posts_data
 
-    async def get_user_feed(self, current_user: User, limit: int = 50, offset: int = 0):
-        cache_key = f"user:{current_user.id}:feed:{limit}:{offset}"
-        cached = await redis_get(cache_key)
-
-        if cached:
-            return cached
-        
+    async def get_user_feed_cursor(self, current_user: User, limit: int = 50, cursor_created_at: datetime | None = None, cursor_id: int | None = None):
         if limit > 50:
             limit = 50
-        
-        following_ids = await self.repo.get_following_ids(current_user.id)
 
-        if not following_ids:
-            return {
-                "items": [],
-                "limit": limit,
-                "offset": offset,
-                "total": 0
+        posts = await self.repo.get_user_feed_cursor(current_user.id, limit, cursor_created_at, cursor_id)
+        has_more = len(posts) > limit
+        items = posts[:limit]
+        
+        next_cursor = None
+        if has_more and items:
+            last_item = items[-1]
+            next_cursor = {
+                "created_at": last_item.created_at,
+                "id": last_item.id
             }
-        
-        total = await self.repo.get_count_posts_by_following(following_ids)
-        posts = await self.repo.get_posts_by_following_limit_offset(following_ids, limit, offset)
 
-        items_json = [PostWithUser.model_validate(p).model_dump(mode='json') for p in posts]
-        
+        items_json = [PostWithUser.model_validate(i).model_dump(mode='json') for i in items]
+
         response_data = {
             "items": items_json,
             "limit": limit,
-            "offset": offset,
-            "total": total
+            "next_cursor": next_cursor,
+            "has_more": has_more
         }
-        
-        await redis_set(cache_key, response_data, ttl=300)
+
         return response_data
 
     async def get_post_comments(self, post_id: int):

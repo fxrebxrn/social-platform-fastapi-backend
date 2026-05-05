@@ -1,6 +1,7 @@
 import pytest
 from httpx import AsyncClient
 from models import Post, Comment, Like, PostAttachment, User, Follow
+from sqlalchemy.ext.asyncio import AsyncSession
 from io import BytesIO
 
 class TestCreatePost:
@@ -197,15 +198,20 @@ class TestGetUserFeed:
         response = await client.get("/posts/feed")
         assert response.status_code == 200
         data = response.json()
-        assert data["total"] == 1
+        assert data["limit"] == 50
+        assert data["has_more"] is False
+        assert data["next_cursor"] is None
         assert len(data["items"]) == 1
+        assert data["items"][0]["title"] == "Test post 2"
 
     @pytest.mark.asyncio
     async def test_get_user_feed_no_follows(self, client_user3: AsyncClient):
         response = await client_user3.get("/posts/feed")
         assert response.status_code == 200
         data = response.json()
-        assert data["total"] == 0
+        assert data["limit"] == 50
+        assert data["has_more"] is False
+        assert data["next_cursor"] is None
         assert data["items"] == []
 
     @pytest.mark.asyncio
@@ -214,6 +220,9 @@ class TestGetUserFeed:
         assert response.status_code == 200
         data = response.json()
         assert data["limit"] == 10
+        assert data["has_more"] is False
+        assert data["next_cursor"] is None
+        assert len(data["items"]) == 1
 
     @pytest.mark.asyncio
     async def test_get_user_feed_limit_too_high(self, client: AsyncClient, follow_1_2: Follow, post2: Post):
@@ -221,6 +230,42 @@ class TestGetUserFeed:
         assert response.status_code == 200
         data = response.json()
         assert data["limit"] == 50
+        assert data["has_more"] is False
+        assert data["next_cursor"] is None
+
+    @pytest.mark.asyncio
+    async def test_get_user_feed_cursor_pagination(self, client: AsyncClient, follow_1_2: Follow, post2: Post, db_session: AsyncSession, user2: User):
+        from models import Post
+
+        extra_posts = []
+        for i in range(3):
+            extra_post = Post(title=f"Feed post {i}", user_id=user2.id)
+            db_session.add(extra_post)
+            extra_posts.append(extra_post)
+        await db_session.flush()
+
+        first_response = await client.get("/posts/feed?limit=1")
+        assert first_response.status_code == 200
+        first_data = first_response.json()
+        assert first_data["limit"] == 1
+        assert first_data["has_more"] is True
+        assert first_data["next_cursor"] is not None
+        assert len(first_data["items"]) == 1
+
+        cursor = first_data["next_cursor"]
+        next_response = await client.get(
+            "/posts/feed",
+            params={
+                "limit": 1,
+                "cursor_id": cursor["id"],
+                "cursor_created_at": cursor["created_at"]
+            }
+        )
+        assert next_response.status_code == 200
+        next_data = next_response.json()
+        assert next_data["limit"] == 1
+        assert len(next_data["items"]) == 1
+        assert next_data["next_cursor"] is not None or next_data["has_more"] is False
 
 class TestGetPostComments:
     @pytest.mark.asyncio
