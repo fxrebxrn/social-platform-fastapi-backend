@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Query
+from fastapi import APIRouter, Depends, UploadFile, File
 from schemas.post_schemas import FeedResponse, PostCreate, PostUpdate, CommentCreate, WithMessagePostOut, WithMessageCommentOut, PostWithUser, PostCommentsResponse, FullPostResponse
 from models import User
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -55,8 +55,8 @@ async def get_my_posts(current_user: Annotated[User, Depends(get_current_user)],
 @router.get("/feed", response_model=FeedResponse)
 async def get_user_feed_cursor(current_user: Annotated[User, Depends(get_current_user)], 
                                db: Annotated[AsyncSession, Depends(get_db)],
+                               limit: int,
                                cursor_id: int | None = None, 
-                               limit: int = Query(50, ge=1, le=50),
                                cursor_created_at: datetime | None = None):
     service = PostService(db)
     return await service.get_user_feed_cursor(current_user, limit, cursor_created_at, cursor_id)
